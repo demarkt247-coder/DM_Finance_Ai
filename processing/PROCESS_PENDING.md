@@ -76,7 +76,12 @@ only has the tools explicitly configured here.
    do not assume a matching sale exists - if parcel count and logged sales don't
    reconcile, flag it.
 4. Sales rows: decrease `Products!stock_qty`, compute profit using the current
-   blended buying cost for that SKU.
+   blended buying cost for that SKU, AND append one row per product sold to the
+   `Sales` tab: date (business_date, not today - matters for backfills),
+   product (canonical name), qty, revenue (sell price x qty), cost (blended
+   buying cost x qty), profit (revenue - cost). This tab is what the Dashboard's
+   daily/weekly/monthly numbers and product chart are built from - a sale isn't
+   fully processed until it's logged here, not just reflected in stock.
 
 ## Phase 4 - Flag unresolved items
 
@@ -113,7 +118,19 @@ Dashboard cells; doing so overwrites the formulas and breaks the layout.
    `processing/format_dashboard.js` to restore the layout, then re-verify.
 3. Never edit Dashboard cells by hand/via write tool - only ever via that
    script.
-3. Mark all rows that made it through every phase cleanly as `status = committed`.
+4. Mark all rows that made it through every phase cleanly as `status = committed`.
+
+## Phase 6 - Notify on dashboard change
+
+If (and only if) this run committed at least one real transaction (not just
+flag resolutions with no dashboard-affecting numbers), send ONE short Telegram
+message with the dashboard link so the founder doesn't have to ask:
+
+`Dashboard updated: https://docs.google.com/spreadsheets/d/16QWNpDadAYW63YCPL90VxrVCFx9FOKX36wgoyOp2eTI/edit`
+
+If this run had nothing to commit (e.g. only flags, or nothing pending at
+all), don't send this - it would just be noise on top of the Phase 4 flag
+message (or no message at all if nothing happened).
 
 ## Done
 
