@@ -34,6 +34,19 @@ app.get('/health-check-backlog', async (req, res) => {
   }
 });
 
+// --- Cheap poll target for the local 15-min PC-side checker. Just counts
+// not-yet-committed manifest rows regardless of age - no LLM involved, so this
+// can be polled often without burning Claude Code usage on empty checks. ---
+app.get('/pending-count', async (req, res) => {
+  try {
+    const count = await countStaleBacklog(0);
+    res.json({ ok: true, count });
+  } catch (err) {
+    console.error('pending-count error', err);
+    res.status(500).json({ ok: false, error: String(err) });
+  }
+});
+
 app.get('/', (req, res) => res.send('DM Finance bot is alive'));
 
 // --- Nightly question push ---
