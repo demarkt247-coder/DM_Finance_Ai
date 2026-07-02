@@ -100,10 +100,19 @@ only has the tools explicitly configured here.
 
 ## Phase 5 - Rebuild Dashboard
 
-1. Recompute the `Dashboard` tab fully from `BankCash`, `SupplierDues`, `Loans`,
-   `Products`, and committed `_ProcessingLog` rows - do not incrementally edit
-   dashboard cells.
-2. Update the "Pending clarifications" and "Last updated" banner at the top.
+The `Dashboard` tab is a formatted KPI-card layout (see `format_dashboard.js`)
+with live formulas pulling from `BankCash`, `SupplierDues`, `Loans`, and
+`_Flags` - it recalculates automatically. Do NOT write values directly into
+Dashboard cells; doing so overwrites the formulas and breaks the layout.
+
+1. Confirm `BankCash`, `SupplierDues`, and `Loans` reflect everything committed
+   this run - the Dashboard numbers are only as correct as those source tabs.
+2. If the Dashboard's layout/formulas ever look broken or missing (e.g. cells
+   show raw numbers with no "Tk" formatting, or a total is 0 when it shouldn't
+   be), that means something overwrote them - re-run
+   `processing/format_dashboard.js` to restore the layout, then re-verify.
+3. Never edit Dashboard cells by hand/via write tool - only ever via that
+   script.
 3. Mark all rows that made it through every phase cleanly as `status = committed`.
 
 ## Done
