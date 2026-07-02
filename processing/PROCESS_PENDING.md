@@ -5,8 +5,13 @@ launch. Read this whole file before doing anything. Run the phases below in orde
 in ONE session (no sub-agents - see architecture decision log, multi-agent split
 was rejected as unnecessary overhead for this single-user batch workflow).
 
-Master Sheet ID: (fill in after creating the dashboard sheet)
+Master Sheet ID: 16QWNpDadAYW63YCPL90VxrVCFx9FOKX36wgoyOp2eTI
 Drive inbox folder ID: 13LL2vD4NeXKrwtsMMewu474e6PBTZgBD
+
+You have access to these tools via the dm-finance MCP server: sheets_read,
+sheets_update, sheets_append, drive_read_image_base64, telegram_send. Use these,
+not any other Drive/Sheets connector, since this session runs unattended and
+only has the tools explicitly configured here.
 
 ## Hard rules (apply in every phase)
 
@@ -80,6 +85,18 @@ Drive inbox folder ID: 13LL2vD4NeXKrwtsMMewu474e6PBTZgBD
    flags from this run (not one message per flag).
 2. Do not mark those manifest rows `committed` - leave them at whatever stage
    they reached; they'll be picked up again next run once resolved.
+3. Message style - talk like a terse finance manager, not a system log:
+   - Skip a "resolved" section entirely unless something meaningfully changed
+     the dashboard (a restated balance, a corrected due). Routine confirmations
+     ("logged your sale") don't need a line - the bot's ✅ reaction already
+     covers that.
+   - Each open question: one line, plain language, no explaining your own
+     reasoning or showing the math. Prefix every question with ⚠️.
+   - No "still open from before" recap of old unresolved items every run -
+     only resurface those if it's been several days, otherwise the founder
+     already knows they're pending.
+   - Max ~5 short lines total. If there's nothing worth a message, don't send
+     one.
 
 ## Phase 5 - Rebuild Dashboard
 

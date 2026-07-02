@@ -70,9 +70,7 @@ bot.on('message', async (msg) => {
         type: 'text',
         rawText: msg.text,
       });
-      await bot.sendMessage(CHAT_ID, isCorrection ? 'Correction logged.' : 'Got it, saved.', {
-        reply_to_message_id: msg.message_id,
-      });
+      await bot.sendMessage(CHAT_ID, '✅', { reply_to_message_id: msg.message_id });
     }
   } catch (err) {
     console.error('message handler error', err);
@@ -113,11 +111,11 @@ bot.on('photo', async (msg) => {
       rawText: msg.caption || '',
     });
 
-    await bot.sendMessage(CHAT_ID, 'Photo saved.', { reply_to_message_id: msg.message_id });
+    await bot.sendMessage(CHAT_ID, '✅', { reply_to_message_id: msg.message_id });
   } catch (err) {
     console.error('photo handler error', err);
     try {
-      await bot.sendMessage(CHAT_ID, 'Something went wrong saving that photo - please resend.');
+      await bot.sendMessage(CHAT_ID, '⚠️ Photo failed to save - please resend.');
     } catch (_) {}
   }
 });
@@ -130,7 +128,7 @@ bot.on('document', async (msg) => {
     if (String(msg.chat.id) !== String(CHAT_ID)) return;
     const doc = msg.document;
     if (!doc.mime_type || !doc.mime_type.startsWith('image/')) {
-      await bot.sendMessage(CHAT_ID, 'Only image files are saved right now - please resend as a photo/image.', {
+      await bot.sendMessage(CHAT_ID, '⚠️ Only images supported - please resend as photo/image.', {
         reply_to_message_id: msg.message_id,
       });
       return;
@@ -164,11 +162,11 @@ bot.on('document', async (msg) => {
       rawText: msg.caption || '',
     });
 
-    await bot.sendMessage(CHAT_ID, 'File saved.', { reply_to_message_id: msg.message_id });
+    await bot.sendMessage(CHAT_ID, '✅', { reply_to_message_id: msg.message_id });
   } catch (err) {
     console.error('document handler error', err);
     try {
-      await bot.sendMessage(CHAT_ID, 'Something went wrong saving that file - please resend.');
+      await bot.sendMessage(CHAT_ID, '⚠️ File failed to save - please resend.');
     } catch (_) {}
   }
 });
