@@ -19,56 +19,61 @@ function getAuth() {
 const NAVY = { red: 0.09, green: 0.13, blue: 0.24 };
 const TEAL = { red: 0.11, green: 0.55, blue: 0.5 };
 const WHITE = { red: 1, green: 1, blue: 1 };
-const CARD_GREY = { red: 0.93, green: 0.95, blue: 0.96 };
-const CARD_BLUE = { red: 0.91, green: 0.95, blue: 0.99 };
+const CARD_GREY = { red: 0.95, green: 0.96, blue: 0.97 };
+const CARD_BLUE = { red: 0.93, green: 0.96, blue: 1 };
 const DARK_TEXT = { red: 0.13, green: 0.16, blue: 0.2 };
 const MUTED_TEXT = { red: 0.45, green: 0.48, blue: 0.52 };
 const RED = { red: 0.86, green: 0.24, blue: 0.24 };
-const CARD_WARN = { red: 0.99, green: 0.96, blue: 0.9 };
-const CARD_GOOD = { red: 0.92, green: 0.98, blue: 0.95 };
+const CARD_WARN = { red: 1, green: 0.97, blue: 0.92 };
+const CARD_GOOD = { red: 0.93, green: 0.99, blue: 0.96 };
+const BORDER_COLOR = { red: 0.85, green: 0.87, blue: 0.89 };
+const THIN_BORDER = { style: 'SOLID', width: 1, color: BORDER_COLOR };
 
-function card(sheetId, r0, c0, width, label, formula, bg, currency = true) {
-  const c1 = c0 + width;
+// Single-column card: label row + value row, bordered block, one clean tile.
+function card(sheetId, r0, col, label, formula, bg, currency = true) {
   const requests = [];
-  requests.push({ mergeCells: { range: { sheetId, startRowIndex: r0, endRowIndex: r0 + 1, startColumnIndex: c0, endColumnIndex: c1 }, mergeType: 'MERGE_ALL' } });
-  requests.push({ mergeCells: { range: { sheetId, startRowIndex: r0 + 1, endRowIndex: r0 + 2, startColumnIndex: c0, endColumnIndex: c1 }, mergeType: 'MERGE_ALL' } });
   requests.push({
     repeatCell: {
-      range: { sheetId, startRowIndex: r0, endRowIndex: r0 + 2, startColumnIndex: c0, endColumnIndex: c1 },
-      cell: { userEnteredFormat: { backgroundColor: bg } },
-      fields: 'userEnteredFormat.backgroundColor',
+      range: { sheetId, startRowIndex: r0, endRowIndex: r0 + 2, startColumnIndex: col, endColumnIndex: col + 1 },
+      cell: { userEnteredFormat: { backgroundColor: bg, padding: { left: 14, top: 8, bottom: 8 } } },
+      fields: 'userEnteredFormat.backgroundColor,userEnteredFormat.padding',
+    },
+  });
+  requests.push({
+    updateBorders: {
+      range: { sheetId, startRowIndex: r0, endRowIndex: r0 + 2, startColumnIndex: col, endColumnIndex: col + 1 },
+      top: THIN_BORDER, bottom: THIN_BORDER, left: THIN_BORDER, right: THIN_BORDER,
     },
   });
   requests.push({
     updateCells: {
-      range: { sheetId, startRowIndex: r0, endRowIndex: r0 + 1, startColumnIndex: c0, endColumnIndex: c0 + 1 },
-      rows: [{ values: [{ userEnteredValue: { stringValue: '  ' + label.toUpperCase() } }] }],
+      range: { sheetId, startRowIndex: r0, endRowIndex: r0 + 1, startColumnIndex: col, endColumnIndex: col + 1 },
+      rows: [{ values: [{ userEnteredValue: { stringValue: label.toUpperCase() } }] }],
       fields: 'userEnteredValue',
     },
   });
   requests.push({
     repeatCell: {
-      range: { sheetId, startRowIndex: r0, endRowIndex: r0 + 1, startColumnIndex: c0, endColumnIndex: c1 },
-      cell: { userEnteredFormat: { textFormat: { fontSize: 9, foregroundColor: MUTED_TEXT, bold: true }, verticalAlignment: 'MIDDLE' } },
+      range: { sheetId, startRowIndex: r0, endRowIndex: r0 + 1, startColumnIndex: col, endColumnIndex: col + 1 },
+      cell: { userEnteredFormat: { textFormat: { fontSize: 9, foregroundColor: MUTED_TEXT, bold: true }, verticalAlignment: 'BOTTOM' } },
       fields: 'userEnteredFormat.textFormat,userEnteredFormat.verticalAlignment',
     },
   });
   requests.push({
     updateCells: {
-      range: { sheetId, startRowIndex: r0 + 1, endRowIndex: r0 + 2, startColumnIndex: c0, endColumnIndex: c0 + 1 },
+      range: { sheetId, startRowIndex: r0 + 1, endRowIndex: r0 + 2, startColumnIndex: col, endColumnIndex: col + 1 },
       rows: [{ values: [{ userEnteredValue: { formulaValue: formula } }] }],
       fields: 'userEnteredValue',
     },
   });
   requests.push({
     repeatCell: {
-      range: { sheetId, startRowIndex: r0 + 1, endRowIndex: r0 + 2, startColumnIndex: c0, endColumnIndex: c1 },
+      range: { sheetId, startRowIndex: r0 + 1, endRowIndex: r0 + 2, startColumnIndex: col, endColumnIndex: col + 1 },
       cell: {
         userEnteredFormat: {
-          textFormat: { fontSize: 20, bold: true, foregroundColor: DARK_TEXT },
-          verticalAlignment: 'MIDDLE',
+          textFormat: { fontSize: 22, bold: true, foregroundColor: DARK_TEXT },
+          verticalAlignment: 'TOP',
           numberFormat: currency ? { type: 'CURRENCY', pattern: '"Tk "#,##0.00' } : { type: 'NUMBER', pattern: '#,##0' },
-          padding: { left: 8 },
         },
       },
       fields: 'userEnteredFormat.textFormat,userEnteredFormat.verticalAlignment,userEnteredFormat.numberFormat',
@@ -82,166 +87,169 @@ async function buildDashboard(sheets, meta) {
   await sheets.spreadsheets.values.clear({ spreadsheetId: SPREADSHEET_ID, range: 'Dashboard!A1:Z100' });
 
   let requests = [];
-
   requests.push({ unmergeCells: { range: { sheetId: dashId, startRowIndex: 0, endRowIndex: 100, startColumnIndex: 0, endColumnIndex: 26 } } });
   requests.push({
     updateSheetProperties: {
-      properties: { sheetId: dashId, gridProperties: { rowCount: 60, columnCount: 20, frozenRowCount: 0, hideGridlines: true } },
+      properties: { sheetId: dashId, gridProperties: { rowCount: 60, columnCount: 12, frozenRowCount: 0, hideGridlines: true } },
       fields: 'gridProperties',
     },
   });
 
-  const colWidths = [40, 210, 40, 190, 40, 210, 40, 190];
+  // Clean 5-column layout: margin | LEFT card | gap | RIGHT card | margin.
+  // Helper data (period start date, chart source table) lives in hidden columns G:H.
+  const colWidths = [16, 340, 40, 340, 16, 20, 140, 90];
   colWidths.forEach((width, i) => {
     requests.push({ updateDimensionProperties: { range: { sheetId: dashId, dimension: 'COLUMNS', startIndex: i, endIndex: i + 1 }, properties: { pixelSize: width }, fields: 'pixelSize' } });
   });
+  // Hide the helper columns (G:H, indices 6-7) entirely
+  requests.push({ updateDimensionProperties: { range: { sheetId: dashId, dimension: 'COLUMNS', startIndex: 6, endIndex: 8 }, properties: { hiddenByUser: true }, fields: 'hiddenByUser' } });
 
-  // Title banner
-  requests.push({ mergeCells: { range: { sheetId: dashId, startRowIndex: 0, endRowIndex: 2, startColumnIndex: 0, endColumnIndex: 8 }, mergeType: 'MERGE_ALL' } });
+  // Title banner, spans B:D (indices 1-3)
+  requests.push({ mergeCells: { range: { sheetId: dashId, startRowIndex: 0, endRowIndex: 2, startColumnIndex: 1, endColumnIndex: 4 }, mergeType: 'MERGE_ALL' } });
   requests.push({
     repeatCell: {
-      range: { sheetId: dashId, startRowIndex: 0, endRowIndex: 2, startColumnIndex: 0, endColumnIndex: 8 },
+      range: { sheetId: dashId, startRowIndex: 0, endRowIndex: 2, startColumnIndex: 1, endColumnIndex: 4 },
       cell: { userEnteredFormat: { backgroundColor: NAVY, verticalAlignment: 'MIDDLE', textFormat: { foregroundColor: WHITE, fontSize: 20, bold: true }, padding: { left: 16 } } },
       fields: 'userEnteredFormat',
     },
   });
   requests.push({
     updateCells: {
-      range: { sheetId: dashId, startRowIndex: 0, endRowIndex: 1, startColumnIndex: 0, endColumnIndex: 1 },
+      range: { sheetId: dashId, startRowIndex: 0, endRowIndex: 1, startColumnIndex: 1, endColumnIndex: 2 },
       rows: [{ values: [{ userEnteredValue: { stringValue: '  De Markt Finance Dashboard' } }] }],
       fields: 'userEnteredValue',
     },
   });
   requests.push({ updateDimensionProperties: { range: { sheetId: dashId, dimension: 'ROWS', startIndex: 0, endIndex: 2 }, properties: { pixelSize: 40 }, fields: 'pixelSize' } });
 
-  // Subtitle: last updated + pending clarifications
-  requests.push({ mergeCells: { range: { sheetId: dashId, startRowIndex: 2, endRowIndex: 3, startColumnIndex: 0, endColumnIndex: 4 }, mergeType: 'MERGE_ALL' } });
+  // Subtitle row 3 (index2): last updated (col B) + pending clarifications (col D)
   requests.push({
     updateCells: {
-      range: { sheetId: dashId, startRowIndex: 2, endRowIndex: 3, startColumnIndex: 0, endColumnIndex: 1 },
-      rows: [{ values: [{ userEnteredValue: { formulaValue: '="  Last updated: "&TEXT(NOW(),"mmm d, h:mm am/pm")' } }] }],
+      range: { sheetId: dashId, startRowIndex: 2, endRowIndex: 3, startColumnIndex: 1, endColumnIndex: 2 },
+      rows: [{ values: [{ userEnteredValue: { formulaValue: '="Last updated: "&TEXT(NOW(),"mmm d, h:mm am/pm")' } }] }],
       fields: 'userEnteredValue',
     },
   });
   requests.push({
     repeatCell: {
-      range: { sheetId: dashId, startRowIndex: 2, endRowIndex: 3, startColumnIndex: 0, endColumnIndex: 4 },
+      range: { sheetId: dashId, startRowIndex: 2, endRowIndex: 3, startColumnIndex: 1, endColumnIndex: 2 },
       cell: { userEnteredFormat: { textFormat: { foregroundColor: MUTED_TEXT, fontSize: 10, italic: true }, verticalAlignment: 'MIDDLE' } },
       fields: 'userEnteredFormat',
     },
   });
-  requests.push({ mergeCells: { range: { sheetId: dashId, startRowIndex: 2, endRowIndex: 3, startColumnIndex: 4, endColumnIndex: 8 }, mergeType: 'MERGE_ALL' } });
   requests.push({
     updateCells: {
-      range: { sheetId: dashId, startRowIndex: 2, endRowIndex: 3, startColumnIndex: 4, endColumnIndex: 5 },
-      rows: [{ values: [{ userEnteredValue: { formulaValue: '=IF(COUNTIF(_Flags!E:E,"open")=0,"  All clear, nothing pending","  ⚠ "&COUNTIF(_Flags!E:E,"open")&" pending clarifications")' } }] }],
+      range: { sheetId: dashId, startRowIndex: 2, endRowIndex: 3, startColumnIndex: 3, endColumnIndex: 4 },
+      rows: [{ values: [{ userEnteredValue: { formulaValue: '=IF(COUNTIF(_Flags!E:E,"open")=0,"All clear, nothing pending","⚠ "&COUNTIF(_Flags!E:E,"open")&" pending clarifications")' } }] }],
       fields: 'userEnteredValue',
     },
   });
   requests.push({
     repeatCell: {
-      range: { sheetId: dashId, startRowIndex: 2, endRowIndex: 3, startColumnIndex: 4, endColumnIndex: 8 },
-      cell: { userEnteredFormat: { textFormat: { fontSize: 11, bold: true }, verticalAlignment: 'MIDDLE' } },
+      range: { sheetId: dashId, startRowIndex: 2, endRowIndex: 3, startColumnIndex: 3, endColumnIndex: 4 },
+      cell: { userEnteredFormat: { textFormat: { fontSize: 11, bold: true }, verticalAlignment: 'MIDDLE', horizontalAlignment: 'RIGHT' } },
       fields: 'userEnteredFormat',
     },
   });
   requests.push({
     addConditionalFormatRule: {
-      rule: { ranges: [{ sheetId: dashId, startRowIndex: 2, endRowIndex: 3, startColumnIndex: 4, endColumnIndex: 5 }], booleanRule: { condition: { type: 'TEXT_CONTAINS', values: [{ userEnteredValue: '⚠' }] }, format: { textFormat: { foregroundColor: RED } } } },
+      rule: { ranges: [{ sheetId: dashId, startRowIndex: 2, endRowIndex: 3, startColumnIndex: 3, endColumnIndex: 4 }], booleanRule: { condition: { type: 'TEXT_CONTAINS', values: [{ userEnteredValue: '⚠' }] }, format: { textFormat: { foregroundColor: RED } } } },
       index: 0,
     },
   });
   requests.push({ updateDimensionProperties: { range: { sheetId: dashId, dimension: 'ROWS', startIndex: 2, endIndex: 3 }, properties: { pixelSize: 28 }, fields: 'pixelSize' } });
 
-  // Period selector row 5 (index 4)
+  // Period selector row 5 (index4), left-aligned under the left column
   requests.push({
     updateCells: {
-      range: { sheetId: dashId, startRowIndex: 4, endRowIndex: 5, startColumnIndex: 0, endColumnIndex: 1 },
-      rows: [{ values: [{ userEnteredValue: { stringValue: '  View period:' } }] }],
+      range: { sheetId: dashId, startRowIndex: 4, endRowIndex: 5, startColumnIndex: 1, endColumnIndex: 2 },
+      rows: [{ values: [{ userEnteredValue: { stringValue: 'View period' } }] }],
       fields: 'userEnteredValue',
     },
   });
   requests.push({
     repeatCell: {
-      range: { sheetId: dashId, startRowIndex: 4, endRowIndex: 5, startColumnIndex: 0, endColumnIndex: 1 },
+      range: { sheetId: dashId, startRowIndex: 4, endRowIndex: 5, startColumnIndex: 1, endColumnIndex: 2 },
       cell: { userEnteredFormat: { textFormat: { fontSize: 10, bold: true, foregroundColor: MUTED_TEXT }, verticalAlignment: 'MIDDLE' } },
       fields: 'userEnteredFormat',
     },
   });
   requests.push({
     updateCells: {
-      range: { sheetId: dashId, startRowIndex: 4, endRowIndex: 5, startColumnIndex: 1, endColumnIndex: 2 },
+      range: { sheetId: dashId, startRowIndex: 4, endRowIndex: 5, startColumnIndex: 3, endColumnIndex: 4 },
       rows: [{ values: [{ userEnteredValue: { stringValue: 'Daily' } }] }],
       fields: 'userEnteredValue',
     },
   });
   requests.push({
     setDataValidation: {
-      range: { sheetId: dashId, startRowIndex: 4, endRowIndex: 5, startColumnIndex: 1, endColumnIndex: 2 },
+      range: { sheetId: dashId, startRowIndex: 4, endRowIndex: 5, startColumnIndex: 3, endColumnIndex: 4 },
       rule: { condition: { type: 'ONE_OF_LIST', values: [{ userEnteredValue: 'Daily' }, { userEnteredValue: 'Weekly' }, { userEnteredValue: 'Monthly' }] }, showCustomUi: true, strict: true },
     },
   });
   requests.push({
     repeatCell: {
-      range: { sheetId: dashId, startRowIndex: 4, endRowIndex: 5, startColumnIndex: 1, endColumnIndex: 2 },
+      range: { sheetId: dashId, startRowIndex: 4, endRowIndex: 5, startColumnIndex: 3, endColumnIndex: 4 },
       cell: { userEnteredFormat: { backgroundColor: TEAL, textFormat: { foregroundColor: WHITE, bold: true, fontSize: 11 }, horizontalAlignment: 'CENTER', verticalAlignment: 'MIDDLE' } },
       fields: 'userEnteredFormat',
     },
   });
   requests.push({ updateDimensionProperties: { range: { sheetId: dashId, dimension: 'ROWS', startIndex: 4, endIndex: 5 }, properties: { pixelSize: 26 }, fields: 'pixelSize' } });
 
-  // Helper cell: period start date, referenced by all period-based formulas (col K, hidden off to the side)
+  // Helper: period start date -> hidden column G, row1 (G1)
   requests.push({
     updateCells: {
-      range: { sheetId: dashId, startRowIndex: 4, endRowIndex: 5, startColumnIndex: 10, endColumnIndex: 11 },
-      rows: [{ values: [{ userEnteredValue: { formulaValue: '=SWITCH($B$5,"Daily",TODAY(),"Weekly",TODAY()-6,"Monthly",DATE(YEAR(TODAY()),MONTH(TODAY()),1))' } }] }],
+      range: { sheetId: dashId, startRowIndex: 0, endRowIndex: 1, startColumnIndex: 6, endColumnIndex: 7 },
+      rows: [{ values: [{ userEnteredValue: { formulaValue: '=SWITCH($D$5,"Daily",TODAY(),"Weekly",TODAY()-6,"Monthly",DATE(YEAR(TODAY()),MONTH(TODAY()),1))' } }] }],
       fields: 'userEnteredValue',
     },
   });
 
-  // Section headers row 7 (index 6)
-  const sectionHeader = (r, c0, c1, text) => {
-    requests.push({ mergeCells: { range: { sheetId: dashId, startRowIndex: r, endRowIndex: r + 1, startColumnIndex: c0, endColumnIndex: c1 }, mergeType: 'MERGE_ALL' } });
-    requests.push({ updateCells: { range: { sheetId: dashId, startRowIndex: r, endRowIndex: r + 1, startColumnIndex: c0, endColumnIndex: c0 + 1 }, rows: [{ values: [{ userEnteredValue: { stringValue: text } }] }], fields: 'userEnteredValue' } });
-    requests.push({ repeatCell: { range: { sheetId: dashId, startRowIndex: r, endRowIndex: r + 1, startColumnIndex: c0, endColumnIndex: c1 }, cell: { userEnteredFormat: { textFormat: { fontSize: 12, bold: true, foregroundColor: NAVY }, verticalAlignment: 'MIDDLE' } }, fields: 'userEnteredFormat' } });
+  // Section headers row 7 (index6)
+  const sectionHeader = (r, col, text) => {
+    requests.push({ updateCells: { range: { sheetId: dashId, startRowIndex: r, endRowIndex: r + 1, startColumnIndex: col, endColumnIndex: col + 1 }, rows: [{ values: [{ userEnteredValue: { stringValue: text } }] }], fields: 'userEnteredValue' } });
+    requests.push({ repeatCell: { range: { sheetId: dashId, startRowIndex: r, endRowIndex: r + 1, startColumnIndex: col, endColumnIndex: col + 1 }, cell: { userEnteredFormat: { textFormat: { fontSize: 12, bold: true, foregroundColor: NAVY }, verticalAlignment: 'MIDDLE' } }, fields: 'userEnteredFormat' } });
   };
-  sectionHeader(6, 0, 4, 'CASH POSITION (current)');
-  sectionHeader(6, 4, 8, 'SALES - selected period');
+  sectionHeader(6, 1, 'Cash Position (current)');
+  sectionHeader(6, 3, 'Sales - selected period');
+  requests.push({ updateDimensionProperties: { range: { sheetId: dashId, dimension: 'ROWS', startIndex: 6, endIndex: 7 }, properties: { pixelSize: 26 }, fields: 'pixelSize' } });
 
-  // Left column cards: Bank Balance, bKash+Cash, Total Cash Position (current, not period-based)
-  requests = requests.concat(card(dashId, 7, 0, 4, 'Bank Balance (BRAC + EBL)', '=INDEX(BankCash!B:B,COUNTA(BankCash!A:A))+INDEX(BankCash!C:C,COUNTA(BankCash!A:A))', CARD_GREY));
-  requests = requests.concat(card(dashId, 10, 0, 4, 'bKash + Physical Cash', '=INDEX(BankCash!D:D,COUNTA(BankCash!A:A))+INDEX(BankCash!E:E,COUNTA(BankCash!A:A))', CARD_GREY));
-  requests = requests.concat(card(dashId, 13, 0, 4, 'Total Cash Position', '=A9+A12', CARD_GOOD));
+  // Cards - left column B (idx1), right column D (idx3). Gap column C (idx2) stays empty white.
+  const gapRow = 3; // rows between each card block
+  requests = requests.concat(card(dashId, 8, 1, 'Bank Balance (BRAC + EBL)', '=INDEX(BankCash!B:B,COUNTA(BankCash!A:A))+INDEX(BankCash!C:C,COUNTA(BankCash!A:A))', CARD_GREY));
+  requests = requests.concat(card(dashId, 8, 3, 'Order Count', '=COUNTIFS(Sales!A:A,">="&$G$1,Sales!A:A,"<="&TODAY())', CARD_BLUE, false));
 
-  // Right column cards: Order Count, Products Sold (qty), Revenue - all period-based via Sales tab
-  requests = requests.concat(card(dashId, 7, 4, 4, 'Order Count', '=COUNTIFS(Sales!A:A,">="&$K$5,Sales!A:A,"<="&TODAY())', CARD_BLUE, false));
-  requests = requests.concat(card(dashId, 10, 4, 4, 'Products Sold (qty)', '=SUMIFS(Sales!C:C,Sales!A:A,">="&$K$5,Sales!A:A,"<="&TODAY())', CARD_BLUE, false));
-  requests = requests.concat(card(dashId, 13, 4, 4, 'Revenue', '=SUMIFS(Sales!D:D,Sales!A:A,">="&$K$5,Sales!A:A,"<="&TODAY())', CARD_GOOD));
+  requests = requests.concat(card(dashId, 8 + gapRow, 1, 'bKash + Physical Cash', '=INDEX(BankCash!D:D,COUNTA(BankCash!A:A))+INDEX(BankCash!E:E,COUNTA(BankCash!A:A))', CARD_GREY));
+  requests = requests.concat(card(dashId, 8 + gapRow, 3, 'Products Sold (qty)', '=SUMIFS(Sales!C:C,Sales!A:A,">="&$G$1,Sales!A:A,"<="&TODAY())', CARD_BLUE, false));
 
-  requests.push({ updateDimensionProperties: { range: { sheetId: dashId, dimension: 'ROWS', startIndex: 6, endIndex: 16 }, properties: { pixelSize: 26 }, fields: 'pixelSize' } });
+  requests = requests.concat(card(dashId, 8 + gapRow * 2, 1, 'Total Cash Position', '=B10+B13', CARD_GOOD));
+  requests = requests.concat(card(dashId, 8 + gapRow * 2, 3, 'Revenue', '=SUMIFS(Sales!D:D,Sales!A:A,">="&$G$1,Sales!A:A,"<="&TODAY())', CARD_GOOD));
 
-  // Chart section header row 17 (index 16)
-  sectionHeader(17, 0, 8, 'TOP PRODUCTS SOLD - selected period');
+  requests.push({ updateDimensionProperties: { range: { sheetId: dashId, dimension: 'ROWS', startIndex: 8, endIndex: 17 }, properties: { pixelSize: 24 }, fields: 'pixelSize' } });
 
-  // Chart data helper table, columns K:L starting row 5 (index 4), header at row 4
+  // Chart section header row 19 (index18)
+  sectionHeader(18, 1, 'Top Products Sold - selected period');
+  requests.push({ updateDimensionProperties: { range: { sheetId: dashId, dimension: 'ROWS', startIndex: 18, endIndex: 19 }, properties: { pixelSize: 26 }, fields: 'pixelSize' } });
+
+  // Chart data helper table -> hidden columns G:H, starting row 3 (index2)
   requests.push({
     updateCells: {
-      range: { sheetId: dashId, startRowIndex: 3, endRowIndex: 4, startColumnIndex: 10, endColumnIndex: 12 },
+      range: { sheetId: dashId, startRowIndex: 2, endRowIndex: 3, startColumnIndex: 6, endColumnIndex: 8 },
       rows: [{ values: [{ userEnteredValue: { stringValue: 'product' } }, { userEnteredValue: { stringValue: 'qty_sold' } }] }],
       fields: 'userEnteredValue',
     },
   });
   const chartRows = [];
   for (let i = 0; i < MAX_PRODUCT_ROWS; i++) {
-    const productsRow = i + 2; // Products!B2 onward
-    const rowIdx = 4 + i; // starting row 5 (index4)
+    const productsRow = i + 2;
+    const rowIdx = 3 + i;
     chartRows.push({
       updateCells: {
-        range: { sheetId: dashId, startRowIndex: rowIdx, endRowIndex: rowIdx + 1, startColumnIndex: 10, endColumnIndex: 12 },
+        range: { sheetId: dashId, startRowIndex: rowIdx, endRowIndex: rowIdx + 1, startColumnIndex: 6, endColumnIndex: 8 },
         rows: [{
           values: [
             { userEnteredValue: { formulaValue: `=IF(Products!B${productsRow}="","",Products!B${productsRow})` } },
-            { userEnteredValue: { formulaValue: `=IF(Products!B${productsRow}="","",SUMIFS(Sales!C:C,Sales!B:B,Products!B${productsRow},Sales!A:A,">="&$K$5,Sales!A:A,"<="&TODAY()))` } },
+            { userEnteredValue: { formulaValue: `=IF(Products!B${productsRow}="","",SUMIFS(Sales!C:C,Sales!B:B,Products!B${productsRow},Sales!A:A,">="&$G$1,Sales!A:A,"<="&TODAY()))` } },
           ],
         }],
         fields: 'userEnteredValue',
@@ -250,19 +258,9 @@ async function buildDashboard(sheets, meta) {
   }
   requests = requests.concat(chartRows);
 
-  // Hide helper columns K:L visually by narrowing (keep functional, just unobtrusive)
-  requests.push({ updateDimensionProperties: { range: { sheetId: dashId, dimension: 'COLUMNS', startIndex: 10, endIndex: 12 }, properties: { pixelSize: 90 }, fields: 'pixelSize' } });
-  requests.push({
-    repeatCell: {
-      range: { sheetId: dashId, startRowIndex: 3, endRowIndex: 4 + MAX_PRODUCT_ROWS, startColumnIndex: 10, endColumnIndex: 12 },
-      cell: { userEnteredFormat: { textFormat: { fontSize: 8, foregroundColor: MUTED_TEXT } } },
-      fields: 'userEnteredFormat.textFormat',
-    },
-  });
-
   await sheets.spreadsheets.batchUpdate({ spreadsheetId: SPREADSHEET_ID, requestBody: { requests } });
 
-  // Delete any existing chart(s) on this sheet before adding a fresh one, so reruns don't duplicate
+  // Delete any existing chart(s) before adding a fresh one, so reruns don't duplicate
   const freshMeta = await sheets.spreadsheets.get({ spreadsheetId: SPREADSHEET_ID, fields: 'sheets(properties(sheetId,title),charts(chartId))' });
   const dashSheet = freshMeta.data.sheets.find((s) => s.properties.title === 'Dashboard');
   const deleteChartRequests = (dashSheet.charts || []).map((c) => ({ deleteEmbeddedObject: { objectId: c.chartId } }));
@@ -270,7 +268,6 @@ async function buildDashboard(sheets, meta) {
     await sheets.spreadsheets.batchUpdate({ spreadsheetId: SPREADSHEET_ID, requestBody: { requests: deleteChartRequests } });
   }
 
-  // Chart itself, added separately since it needs the sheet to exist with data ranges valid
   await sheets.spreadsheets.batchUpdate({
     spreadsheetId: SPREADSHEET_ID,
     requestBody: {
@@ -283,11 +280,11 @@ async function buildDashboard(sheets, meta) {
                 chartType: 'BAR',
                 legendPosition: 'NO_LEGEND',
                 axis: [{ position: 'BOTTOM_AXIS', title: 'Qty sold' }],
-                domains: [{ domain: { sourceRange: { sources: [{ sheetId: dashId, startRowIndex: 4, endRowIndex: 4 + MAX_PRODUCT_ROWS, startColumnIndex: 10, endColumnIndex: 11 }] } } }],
-                series: [{ series: { sourceRange: { sources: [{ sheetId: dashId, startRowIndex: 4, endRowIndex: 4 + MAX_PRODUCT_ROWS, startColumnIndex: 11, endColumnIndex: 12 }] } }, color: TEAL }],
+                domains: [{ domain: { sourceRange: { sources: [{ sheetId: dashId, startRowIndex: 3, endRowIndex: 3 + MAX_PRODUCT_ROWS, startColumnIndex: 6, endColumnIndex: 7 }] } } }],
+                series: [{ series: { sourceRange: { sources: [{ sheetId: dashId, startRowIndex: 3, endRowIndex: 3 + MAX_PRODUCT_ROWS, startColumnIndex: 7, endColumnIndex: 8 }] } }, color: TEAL }],
               },
             },
-            position: { overlayPosition: { anchorCell: { sheetId: dashId, rowIndex: 17, columnIndex: 0 }, widthPixels: 760, heightPixels: 320 } },
+            position: { overlayPosition: { anchorCell: { sheetId: dashId, rowIndex: 19, columnIndex: 1 }, widthPixels: 700, heightPixels: 300 } },
           },
         },
       }],
@@ -302,7 +299,6 @@ async function buildLiabilities(sheets, meta) {
   const liabId = liabSheet.properties.sheetId;
   await sheets.spreadsheets.values.clear({ spreadsheetId: SPREADSHEET_ID, range: 'Liabilities!A1:Z100' });
 
-  // Remove existing banded ranges from a prior run before re-adding (Sheets rejects overlapping banding)
   const existingBands = (liabSheet.bandedRanges || []).map((b) => ({ deleteBanding: { bandedRangeId: b.bandedRangeId } }));
   if (existingBands.length) {
     await sheets.spreadsheets.batchUpdate({ spreadsheetId: SPREADSHEET_ID, requestBody: { requests: existingBands } });
@@ -310,22 +306,21 @@ async function buildLiabilities(sheets, meta) {
 
   let requests = [];
   requests.push({ unmergeCells: { range: { sheetId: liabId, startRowIndex: 0, endRowIndex: 100, startColumnIndex: 0, endColumnIndex: 26 } } });
-  requests.push({ updateSheetProperties: { properties: { sheetId: liabId, gridProperties: { rowCount: 40, columnCount: 8, hideGridlines: true } }, fields: 'gridProperties' } });
-  const colWidths = [40, 220, 160, 300];
+  requests.push({ updateSheetProperties: { properties: { sheetId: liabId, gridProperties: { rowCount: 40, columnCount: 6, hideGridlines: true } }, fields: 'gridProperties' } });
+  const colWidths = [16, 220, 160, 300, 16];
   colWidths.forEach((width, i) => requests.push({ updateDimensionProperties: { range: { sheetId: liabId, dimension: 'COLUMNS', startIndex: i, endIndex: i + 1 }, properties: { pixelSize: width }, fields: 'pixelSize' } }));
 
-  requests.push({ mergeCells: { range: { sheetId: liabId, startRowIndex: 0, endRowIndex: 2, startColumnIndex: 0, endColumnIndex: 4 }, mergeType: 'MERGE_ALL' } });
-  requests.push({ repeatCell: { range: { sheetId: liabId, startRowIndex: 0, endRowIndex: 2, startColumnIndex: 0, endColumnIndex: 4 }, cell: { userEnteredFormat: { backgroundColor: NAVY, verticalAlignment: 'MIDDLE', textFormat: { foregroundColor: WHITE, fontSize: 18, bold: true }, padding: { left: 16 } } }, fields: 'userEnteredFormat' } });
-  requests.push({ updateCells: { range: { sheetId: liabId, startRowIndex: 0, endRowIndex: 1, startColumnIndex: 0, endColumnIndex: 1 }, rows: [{ values: [{ userEnteredValue: { stringValue: '  Suppliers & Loans' } }] }], fields: 'userEnteredValue' } });
+  requests.push({ mergeCells: { range: { sheetId: liabId, startRowIndex: 0, endRowIndex: 2, startColumnIndex: 1, endColumnIndex: 4 }, mergeType: 'MERGE_ALL' } });
+  requests.push({ repeatCell: { range: { sheetId: liabId, startRowIndex: 0, endRowIndex: 2, startColumnIndex: 1, endColumnIndex: 4 }, cell: { userEnteredFormat: { backgroundColor: NAVY, verticalAlignment: 'MIDDLE', textFormat: { foregroundColor: WHITE, fontSize: 18, bold: true }, padding: { left: 16 } } }, fields: 'userEnteredFormat' } });
+  requests.push({ updateCells: { range: { sheetId: liabId, startRowIndex: 0, endRowIndex: 1, startColumnIndex: 1, endColumnIndex: 2 }, rows: [{ values: [{ userEnteredValue: { stringValue: '  Suppliers & Loans' } }] }], fields: 'userEnteredValue' } });
   requests.push({ updateDimensionProperties: { range: { sheetId: liabId, dimension: 'ROWS', startIndex: 0, endIndex: 2 }, properties: { pixelSize: 36 }, fields: 'pixelSize' } });
 
-  // Totals cards row 4-5 (index 3)
-  requests = requests.concat(card(liabId, 3, 0, 2, 'Total Supplier Dues', '=SUM(SupplierDues!C2:C100)', CARD_WARN));
-  requests = requests.concat(card(liabId, 3, 2, 2, 'Total Loans Payable', '=SUM(Loans!C2:C100)', CARD_WARN));
+  requests = requests.concat(card(liabId, 3, 1, 'Total Supplier Dues', '=SUM(SupplierDues!C2:C100)', CARD_WARN));
+  requests = requests.concat(card(liabId, 3, 3, 'Total Loans Payable', '=SUM(Loans!C2:C100)', CARD_WARN));
   requests.push({ updateDimensionProperties: { range: { sheetId: liabId, dimension: 'ROWS', startIndex: 3, endIndex: 5 }, properties: { pixelSize: 26 }, fields: 'pixelSize' } });
 
-  // Supplier table header row 7 (index 6)
-  const tableHeader = (r, c0, headers) => {
+  const tableHeader = (r, c0, headers, span) => {
+    requests.push({ mergeCells: { range: { sheetId: liabId, startRowIndex: r, endRowIndex: r + 1, startColumnIndex: c0, endColumnIndex: c0 + span }, mergeType: 'MERGE_ALL' } });
     headers.forEach((h, i) => {
       requests.push({
         updateCells: {
@@ -335,18 +330,25 @@ async function buildLiabilities(sheets, meta) {
         },
       });
     });
-    requests.push({
-      repeatCell: {
-        range: { sheetId: liabId, startRowIndex: r, endRowIndex: r + 1, startColumnIndex: c0, endColumnIndex: c0 + headers.length },
-        cell: { userEnteredFormat: { backgroundColor: NAVY, textFormat: { foregroundColor: WHITE, bold: true, fontSize: 10 }, verticalAlignment: 'MIDDLE', padding: { left: 6 } } },
-        fields: 'userEnteredFormat',
-      },
-    });
   };
-  tableHeader(6, 0, ['Supplier', 'Current Due', 'Notes']);
+  // Table headers: Supplier | Due | Notes across columns 1,2,3
   requests.push({
     updateCells: {
-      range: { sheetId: liabId, startRowIndex: 7, endRowIndex: 27, startColumnIndex: 0, endColumnIndex: 3 },
+      range: { sheetId: liabId, startRowIndex: 6, endRowIndex: 7, startColumnIndex: 1, endColumnIndex: 4 },
+      rows: [{ values: [{ userEnteredValue: { stringValue: 'Supplier' } }, { userEnteredValue: { stringValue: 'Current Due' } }, { userEnteredValue: { stringValue: 'Notes' } }] }],
+      fields: 'userEnteredValue',
+    },
+  });
+  requests.push({
+    repeatCell: {
+      range: { sheetId: liabId, startRowIndex: 6, endRowIndex: 7, startColumnIndex: 1, endColumnIndex: 4 },
+      cell: { userEnteredFormat: { backgroundColor: NAVY, textFormat: { foregroundColor: WHITE, bold: true, fontSize: 10 }, verticalAlignment: 'MIDDLE', padding: { left: 6 } } },
+      fields: 'userEnteredFormat',
+    },
+  });
+  requests.push({
+    updateCells: {
+      range: { sheetId: liabId, startRowIndex: 7, endRowIndex: 27, startColumnIndex: 1, endColumnIndex: 4 },
       rows: Array.from({ length: 20 }, (_, i) => ({
         values: [
           { userEnteredValue: { formulaValue: `=IF(SupplierDues!A${i + 2}="","",SupplierDues!A${i + 2})` } },
@@ -357,14 +359,26 @@ async function buildLiabilities(sheets, meta) {
       fields: 'userEnteredValue',
     },
   });
-  requests.push({ repeatCell: { range: { sheetId: liabId, startRowIndex: 7, endRowIndex: 27, startColumnIndex: 1, endColumnIndex: 2 }, cell: { userEnteredFormat: { numberFormat: { type: 'CURRENCY', pattern: '"Tk "#,##0.00' } } }, fields: 'userEnteredFormat.numberFormat' } });
-  requests.push({ addBanding: { bandedRange: { range: { sheetId: liabId, startRowIndex: 7, endRowIndex: 27, startColumnIndex: 0, endColumnIndex: 3 }, rowProperties: { headerColor: NAVY, firstBandColor: WHITE, secondBandColor: CARD_GREY } } } });
+  requests.push({ repeatCell: { range: { sheetId: liabId, startRowIndex: 7, endRowIndex: 27, startColumnIndex: 2, endColumnIndex: 3 }, cell: { userEnteredFormat: { numberFormat: { type: 'CURRENCY', pattern: '"Tk "#,##0.00' } } }, fields: 'userEnteredFormat.numberFormat' } });
+  requests.push({ addBanding: { bandedRange: { range: { sheetId: liabId, startRowIndex: 7, endRowIndex: 27, startColumnIndex: 1, endColumnIndex: 4 }, rowProperties: { headerColor: NAVY, firstBandColor: WHITE, secondBandColor: CARD_GREY } } } });
 
-  // Loans table
-  tableHeader(29, 0, ['Lender', 'Balance', 'Notes']);
   requests.push({
     updateCells: {
-      range: { sheetId: liabId, startRowIndex: 30, endRowIndex: 40, startColumnIndex: 0, endColumnIndex: 3 },
+      range: { sheetId: liabId, startRowIndex: 29, endRowIndex: 30, startColumnIndex: 1, endColumnIndex: 4 },
+      rows: [{ values: [{ userEnteredValue: { stringValue: 'Lender' } }, { userEnteredValue: { stringValue: 'Balance' } }, { userEnteredValue: { stringValue: 'Notes' } }] }],
+      fields: 'userEnteredValue',
+    },
+  });
+  requests.push({
+    repeatCell: {
+      range: { sheetId: liabId, startRowIndex: 29, endRowIndex: 30, startColumnIndex: 1, endColumnIndex: 4 },
+      cell: { userEnteredFormat: { backgroundColor: NAVY, textFormat: { foregroundColor: WHITE, bold: true, fontSize: 10 }, verticalAlignment: 'MIDDLE', padding: { left: 6 } } },
+      fields: 'userEnteredFormat',
+    },
+  });
+  requests.push({
+    updateCells: {
+      range: { sheetId: liabId, startRowIndex: 30, endRowIndex: 40, startColumnIndex: 1, endColumnIndex: 4 },
       rows: Array.from({ length: 10 }, (_, i) => ({
         values: [
           { userEnteredValue: { formulaValue: `=IF(Loans!A${i + 2}="","",Loans!A${i + 2})` } },
@@ -375,8 +389,8 @@ async function buildLiabilities(sheets, meta) {
       fields: 'userEnteredValue',
     },
   });
-  requests.push({ repeatCell: { range: { sheetId: liabId, startRowIndex: 30, endRowIndex: 40, startColumnIndex: 1, endColumnIndex: 2 }, cell: { userEnteredFormat: { numberFormat: { type: 'CURRENCY', pattern: '"Tk "#,##0.00' } } }, fields: 'userEnteredFormat.numberFormat' } });
-  requests.push({ addBanding: { bandedRange: { range: { sheetId: liabId, startRowIndex: 30, endRowIndex: 40, startColumnIndex: 0, endColumnIndex: 3 }, rowProperties: { headerColor: NAVY, firstBandColor: WHITE, secondBandColor: CARD_GREY } } } });
+  requests.push({ repeatCell: { range: { sheetId: liabId, startRowIndex: 30, endRowIndex: 40, startColumnIndex: 2, endColumnIndex: 3 }, cell: { userEnteredFormat: { numberFormat: { type: 'CURRENCY', pattern: '"Tk "#,##0.00' } } }, fields: 'userEnteredFormat.numberFormat' } });
+  requests.push({ addBanding: { bandedRange: { range: { sheetId: liabId, startRowIndex: 30, endRowIndex: 40, startColumnIndex: 1, endColumnIndex: 4 }, rowProperties: { headerColor: NAVY, firstBandColor: WHITE, secondBandColor: CARD_GREY } } } });
 
   await sheets.spreadsheets.batchUpdate({ spreadsheetId: SPREADSHEET_ID, requestBody: { requests } });
   console.log('Liabilities tab rebuilt.');
