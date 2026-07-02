@@ -1,0 +1,17 @@
+{
+  "name": "dm-finance-bot",
+  "version": "1.0.0",
+  "description": "De Markt nightly finance Telegram bot - collects answers, stores raw to Drive, no LLM calls here",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "express": "^4.19.2",
+    "node-telegram-bot-api": "^0.66.0",
+    "googleapis": "^140.0.1",
+    "node-cron": "^3.0.3",
+    "dotenv": "^16.4.5",
+    "axios": "^1.7.2"
+  }
+}

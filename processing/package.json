@@ -1,0 +1,10 @@
+{
+  "name": "dm-finance-processing",
+  "version": "1.0.0",
+  "private": true,
+  "description": "One-time setup scripts for De Markt finance sheet initialization",
+  "dependencies": {
+    "googleapis": "^140.0.1",
+    "dotenv": "^16.4.5"
+  }
+}
