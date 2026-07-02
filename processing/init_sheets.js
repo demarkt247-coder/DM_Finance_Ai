@@ -5,7 +5,7 @@
 //
 // Uses the same OAuth refresh-token auth as the bot (see ../bot/lib/drive.js) so it
 // writes as the founder's own account, not a quota-less service account.
-require('dotenv').config({ path: '../bot/.env' });
+require('dotenv').config();
 const { google } = require('googleapis');
 
 const SPREADSHEET_ID = process.env.MASTER_SHEET_ID; // the blank sheet created for the dashboard
