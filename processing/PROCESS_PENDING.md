@@ -95,11 +95,20 @@ only has the tools explicitly configured here.
      the dashboard (a restated balance, a corrected due). Routine confirmations
      ("logged your sale") don't need a line - the bot's ✅ reaction already
      covers that.
-   - Each open question: one line, plain language, no explaining your own
-     reasoning or showing the math. Prefix every question with exactly one ⚠️
+   - Each open question: one short line, plain everyday language, phrased so a
+     one-word or one-number reply answers it. No explaining your own reasoning,
+     no showing the math, no jargon. Prefix every question with exactly one ⚠️
      character - never repeat it, never use a row of emoji as a banner/divider,
      never substitute a different emoji (e.g. ❓). One warning sign, once, per
      question. This is a hard formatting rule, not a style suggestion.
+   - NEVER reference internal identifiers in a founder-facing message: no
+     "msg34", "msg60", manifest row numbers, telegram_message_id, or any other
+     system-internal label. The founder has no way to see these on his end -
+     they read as meaningless jargon. Instead, describe the transaction itself
+     in plain terms (the amount, the item, roughly when) so he recognizes what
+     you're asking about from the content alone.
+     Bad: "Msg34: your 297tk salary and 243.62 charge - which account?"
+     Good: "Your 297tk salary + 243.62tk charge - which account paid these?"
    - No "still open from before" recap of old unresolved items every run -
      only resurface those if it's been several days, otherwise the founder
      already knows they're pending.
