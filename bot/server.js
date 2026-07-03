@@ -7,6 +7,7 @@ const axios = require('axios');
 const { uploadToDrive } = require('./lib/drive');
 const { appendManifestRow, isDuplicateFileUniqueId, countStaleBacklog, todayBusinessDate } = require('./lib/manifest');
 const { NIGHTLY_QUESTIONS } = require('./lib/questions');
+const { classifyForAck } = require('./lib/classify');
 
 const CHAT_ID = process.env.TELEGRAM_CHAT_ID;
 const bot = new TelegramBot(process.env.TELEGRAM_BOT_TOKEN, { polling: true });
@@ -70,7 +71,16 @@ bot.on('message', async (msg) => {
         type: 'text',
         rawText: msg.text,
       });
-      await bot.sendMessage(CHAT_ID, '✅', { reply_to_message_id: msg.message_id });
+
+      let ackText;
+      if (isCorrection) {
+        const snippet = msg.reply_to_message.text ? msg.reply_to_message.text.slice(0, 40) : '';
+        ackText = `Correction noted - re: "${snippet}${snippet.length === 40 ? '...' : ''}" - will update.`;
+      } else {
+        const isQuestion = /\?$/.test(msg.text.trim()) || /^(why|what|when|where|how|is|did|do|can)\b/i.test(msg.text.trim());
+        ackText = await classifyForAck({ text: msg.text, businessDate: todayBusinessDate(), isQuestion });
+      }
+      await bot.sendMessage(CHAT_ID, ackText, { reply_to_message_id: msg.message_id });
     }
   } catch (err) {
     console.error('message handler error', err);
@@ -86,7 +96,7 @@ bot.on('photo', async (msg) => {
     const fileUniqueId = largest.file_unique_id;
 
     if (await isDuplicateFileUniqueId(fileUniqueId)) {
-      await bot.sendMessage(CHAT_ID, 'Already have this photo, skipped duplicate.', {
+      await bot.sendMessage(CHAT_ID, 'Already logged - skipped.', {
         reply_to_message_id: msg.message_id,
       });
       return;
@@ -111,7 +121,7 @@ bot.on('photo', async (msg) => {
       rawText: msg.caption || '',
     });
 
-    await bot.sendMessage(CHAT_ID, '✅', { reply_to_message_id: msg.message_id });
+    await bot.sendMessage(CHAT_ID, 'Photo received - queued for review.', { reply_to_message_id: msg.message_id });
   } catch (err) {
     console.error('photo handler error', err);
     try {
@@ -136,7 +146,7 @@ bot.on('document', async (msg) => {
 
     const fileUniqueId = doc.file_unique_id;
     if (await isDuplicateFileUniqueId(fileUniqueId)) {
-      await bot.sendMessage(CHAT_ID, 'Already have this file, skipped duplicate.', {
+      await bot.sendMessage(CHAT_ID, 'Already logged - skipped.', {
         reply_to_message_id: msg.message_id,
       });
       return;
@@ -162,7 +172,7 @@ bot.on('document', async (msg) => {
       rawText: msg.caption || '',
     });
 
-    await bot.sendMessage(CHAT_ID, '✅', { reply_to_message_id: msg.message_id });
+    await bot.sendMessage(CHAT_ID, 'Photo received - queued for review.', { reply_to_message_id: msg.message_id });
   } catch (err) {
     console.error('document handler error', err);
     try {
