@@ -51,11 +51,41 @@ app.get('/pending-count', async (req, res) => {
 app.get('/', (req, res) => res.send('DM Finance bot is alive'));
 
 // --- Nightly question push ---
+// IMPORTANT: Render's free tier sleeps the whole process after ~15 min with no
+// incoming HTTP traffic. node-cron only fires if the process happens to be awake
+// at that exact tick - a missed fire is NOT retried later, it's just gone. This
+// bit us once (8pm question silently never sent). Internal cron.schedule below is
+// kept as a belt-and-suspenders backup for whenever the service happens to already
+// be awake, but the real guarantee is an EXTERNAL trigger (Google Apps Script, same
+// free mechanism as the backlog alert) hitting /trigger-nightly-question daily at
+// 8pm Dhaka - the external HTTP request itself wakes the service (accepting the
+// ~30-60s cold-start delay), so the send no longer depends on the process already
+// being awake by chance.
+let lastNightlySendDate = null; // in-memory guard against double-sends if both paths fire
+
+async function sendNightlyQuestionIfNotAlreadySentToday() {
+  const today = todayBusinessDate();
+  if (lastNightlySendDate === today) return { sent: false, reason: 'already sent today' };
+  await bot.sendMessage(CHAT_ID, NIGHTLY_QUESTIONS);
+  lastNightlySendDate = today;
+  return { sent: true };
+}
+
 const hour = process.env.QUESTION_HOUR || '20';
 const minute = process.env.QUESTION_MINUTE || '0';
 cron.schedule(`${minute} ${hour} * * *`, () => {
-  bot.sendMessage(CHAT_ID, NIGHTLY_QUESTIONS).catch((e) => console.error('nightly send failed', e));
+  sendNightlyQuestionIfNotAlreadySentToday().catch((e) => console.error('nightly send failed', e));
 }, { timezone: process.env.TIMEZONE || 'Asia/Dhaka' });
+
+app.get('/trigger-nightly-question', async (req, res) => {
+  try {
+    const result = await sendNightlyQuestionIfNotAlreadySentToday();
+    res.json({ ok: true, ...result });
+  } catch (err) {
+    console.error('trigger-nightly-question error', err);
+    res.status(500).json({ ok: false, error: String(err) });
+  }
+});
 
 // --- Inbound text messages (answers + corrections) ---
 bot.on('message', async (msg) => {
