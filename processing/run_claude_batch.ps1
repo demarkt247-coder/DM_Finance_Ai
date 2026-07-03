@@ -15,13 +15,18 @@ $LogFile = "$ProjectDir\processing\last_run.log"
 Set-Location $ProjectDir
 Add-Content -Path $LogFile -Value "--- Triggered $(Get-Date) ---"
 
-$PromptText = Get-Content -Path $PromptFile -Raw
 $McpConfig = "$ProjectDir\processing\mcp-config.json"
 # Absolute path, not just "claude" - Task Scheduler runs with a stale PATH snapshot
 # from before the CLI was installed (npm PATH updates need a full logout/login to
 # propagate to scheduled tasks), so relying on PATH resolution silently fails there
 # even though it works fine in an interactive session.
 $ClaudeExe = "C:\Users\De Markt\AppData\Roaming\npm\claude.cmd"
-& $ClaudeExe -p $PromptText --mcp-config $McpConfig --permission-mode bypassPermissions 2>&1 | Add-Content -Path $LogFile
+# Pipe the prompt via stdin instead of passing it as a CLI argument - when this
+# script is itself launched by a Node child_process (the listener), the prompt
+# text passing through Node -> PowerShell -> claude.cmd as a positional argument
+# got mangled/truncated, causing Claude to receive a garbled prompt and fall back
+# to confused interactive-style responses instead of running the real batch job.
+# stdin piping is a single clean handoff and survives being spawned from anywhere.
+Get-Content -Path $PromptFile -Raw | & $ClaudeExe -p --mcp-config $McpConfig --permission-mode bypassPermissions 2>&1 | Add-Content -Path $LogFile
 
 Add-Content -Path $LogFile -Value "--- Finished $(Get-Date) ---"
