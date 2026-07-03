@@ -96,7 +96,10 @@ only has the tools explicitly configured here.
      ("logged your sale") don't need a line - the bot's ✅ reaction already
      covers that.
    - Each open question: one line, plain language, no explaining your own
-     reasoning or showing the math. Prefix every question with ⚠️.
+     reasoning or showing the math. Prefix every question with exactly one ⚠️
+     character - never repeat it, never use a row of emoji as a banner/divider,
+     never substitute a different emoji (e.g. ❓). One warning sign, once, per
+     question. This is a hard formatting rule, not a style suggestion.
    - No "still open from before" recap of old unresolved items every run -
      only resurface those if it's been several days, otherwise the founder
      already knows they're pending.
