@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "dm-finance": {
+      "command": "C:\\Program Files\\nodejs\\node.exe",
+      "args": ["E:\\Claude Upgrade\\Finance\\processing\\mcp-server\\index.js"]
+    }
+  }
+}
